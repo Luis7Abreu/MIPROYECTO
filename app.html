@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinanzApp - Gestión de Finanzas Personal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#5D5CDE',
+                        income: '#34D399',
+                        expense: '#F87171',
+                        dark: {
+                            bg: '#181818',
+                            card: '#242424',
+                            text: '#E5E5E5'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 dark:bg-dark-bg min-h-screen font-sans text-gray-800 dark:text-dark-text transition-colors duration-200">
+    <!-- Detección de tema claro/oscuro -->
+    <script>
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+    </script>
+
+    <!-- Encabezado de la aplicación -->
+    <header class="bg-white dark:bg-dark-card shadow-md transition-colors duration-200">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-primary">FinanzApp</h1>
+                <div class="text-xl font-semibold" id="balance">$0.00</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido principal -->
+    <main class="container mx-auto px-4 py-6">
+        <!-- Resumen financiero -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="bg-white dark:bg-dark-card rounded-lg shadow p-4 transition-colors duration-200">
+                <h2 class="text-lg font-semibold mb-2">Ingresos</h2>
+                <p class="text-income text-xl font-bold" id="total-income">$0.00</p>
+            </div>
+            <div class="bg-white dark:bg-dark-card rounded-lg shadow p-4 transition-colors duration-200">
+                <h2 class="text-lg font-semibold mb-2">Gastos</h2>
+                <p class="text-expense text-xl font-bold" id="total-expense">$0.00</p>
+            </div>
+        </div>
+
+        <!-- Gráfico -->
+        <div class="bg-white dark:bg-dark-card rounded-lg shadow p-4 mb-6 transition-colors duration-200">
+            <h2 class="text-lg font-semibold mb-4">Resumen de Finanzas</h2>
+            <div class="h-64">
+                <canvas id="finance-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Formulario para nueva transacción -->
+        <div class="bg-white dark:bg-dark-card rounded-lg shadow p-4 mb-6 transition-colors duration-200">
+            <h2 class="text-lg font-semibold mb-4">Nueva Transacción</h2>
+            <form id="transaction-form" class="space-y-4">
+                <div>
+                    <label for="description" class="block text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
+                    <input type="text" id="description" class="w-full px-4 py-2 border rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-dark-bg dark:border-gray-600" required>
+                </div>
+                <div>
+                    <label for="amount" class="block text-gray-700 dark:text-gray-300 mb-1">Cantidad</label>
+                    <input type="number" id="amount" step="0.01" class="w-full px-4 py-2 border rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-dark-bg dark:border-gray-600" required>
+                </div>
+                <div>
+                    <label for="category" class="block text-gray-700 dark:text-gray-300 mb-1">Categoría</label>
+                    <select id="category" class="w-full px-4 py-2 border rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-dark-bg dark:border-gray-600">
+                        <option value="salary">Salario</option>
+                        <option value="investment">Inversión</option>
+                        <option value="food">Comida</option>
+                        <option value="transportation">Transporte</option>
+                        <option value="entertainment">Entretenimiento</option>
+                        <option value="housing">Vivienda</option>
+                        <option value="utilities">Servicios</option>
+                        <option value="other">Otro</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="type" class="block text-gray-700 dark:text-gray-300 mb-1">Tipo</label>
+                    <div class="flex space-x-4">
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="type" value="income" class="form-radio text-primary" checked>
+                            <span class="ml-2">Ingreso</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="type" value="expense" class="form-radio text-primary">
+                            <span class="ml-2">Gasto</span>
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label for="date" class="block text-gray-700 dark:text-gray-300 mb-1">Fecha</label>
+                    <input type="date" id="date" class="w-full px-4 py-2 border rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-primary dark:bg-dark-bg dark:border-gray-600" required>
+                </div>
+                <button type="submit" class="w-full bg-primary hover:bg-opacity-90 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
+                    Agregar Transacción
+                </button>
+            </form>
+        </div>
+
+        <!-- Lista de transacciones -->
+        <div class="bg-white dark:bg-dark-card rounded-lg shadow p-4 transition-colors duration-200">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold">Historial de Transacciones</h2>
+                <button id="clear-data" class="text-sm text-red-500 hover:text-red-700">
+                    Borrar Datos
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead class="border-b">
+                        <tr>
+                            <th class="text-left py-2">Fecha</th>
+                            <th class="text-left py-2">Descripción</th>
+                            <th class="text-left py-2">Categoría</th>
+                            <th class="text-right py-2">Monto</th>
+                            <th class="text-right py-2">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactions-table">
+                        <!-- Las transacciones se cargarán dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+            <p id="no-transactions" class="text-center py-4 text-gray-500 dark:text-gray-400">No hay transacciones registradas</p>
+        </div>
+    </main>
+
+    <!-- Footer con información de la aplicación -->
+    <footer class="bg-white dark:bg-dark-card mt-8 py-4 shadow-inner transition-colors duration-200">
+        <div class="container mx-auto px-4 text-center text-sm text-gray-600 dark:text-gray-400">
+            <p>FinanzApp - Aplicación de Gestión de Finanzas Personal</p>
+            <p class="mt-1">Desarrollada con principios de ingeniería de software</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- MODELO ---
+        // Principio: Separación de Preocupaciones (Separation of Concerns)
+        class FinanceModel {
+            constructor() {
+                this.transactions = [];
+                this.observers = [];
+                this.loadData();
+            }
+
+            // Principio: Persistencia de Datos
+            saveData() {
+                const data = JSON.stringify(this.transactions);
+                localStorage.setItem('finanzapp-transactions', data);
+            }
+
+            loadData() {
+                try {
+                    const data = localStorage.getItem('finanzapp-transactions');
+                    if (data) {
+                        this.transactions = JSON.parse(data);
+                    }
+                    this.notifyObservers();
+                } catch (e) {
+                    console.error('Error loading data:', e);
+                    this.transactions = [];
+                }
+            }
+
+            // Principio: Patrón Observador (Observer Pattern)
+            addObserver(observer) {
+                this.observers.push(observer);
+            }
+
+            notifyObservers() {
+                for (const observer of this.observers) {
+                    observer.update();
+                }
+            }
+
+            // Principio: CRUD Operations
+            addTransaction(transaction) {
+                this.transactions.push(transaction);
+                this.saveData();
+                this.notifyObservers();
+            }
+
+            deleteTransaction(id) {
+                this.transactions = this.transactions.filter(t => t.id !== id);
+                this.saveData();
+                this.notifyObservers();
+            }
+
+            clearAllData() {
+                this.transactions = [];
+                this.saveData();
+                this.notifyObservers();
+            }
+
+            // Principio: Encapsulación
+            getTransactions() {
+                return [...this.transactions]; // Devuelve una copia para mantener encapsulación
+            }
+
+            // Principio: Procesamiento de Datos
+            getBalance() {
+                return this.getIncome() - this.getExpenses();
+            }
+
+            getIncome() {
+                return this.transactions
+                    .filter(t => t.type === 'income')
+                    .reduce((sum, t) => sum + t.amount, 0);
+            }
+
+            getExpenses() {
+                return this.transactions
+                    .filter(t => t.type === 'expense')
+                    .reduce((sum, t) => sum + t.amount, 0);
+            }
+
+            getCategoryTotals() {
+                const categories = {};
+                
+                this.transactions.forEach(transaction => {
+                    const { category, amount, type } = transaction;
+                    if (!categories[category]) {
+                        categories[category] = { income: 0, expense: 0 };
+                    }
+                    
+                    if (type === 'income') {
+                        categories[category].income += amount;
+                    } else {
+                        categories[category].expense += amount;
+                    }
+                });
+                
+                return categories;
+            }
+        }
+
+        // --- CONTROLADOR ---
+        // Principio: Patrón MVC (Model-View-Controller)
+        class FinanceController {
+            constructor(model) {
+                this.model = model;
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                // Principio: Manejo de Eventos
+                const form = document.getElementById('transaction-form');
+                form.addEventListener('submit', this.handleNewTransaction.bind(this));
+
+                const clearButton = document.getElementById('clear-data');
+                clearButton.addEventListener('click', this.handleClearData.bind(this));
+
+                // Delegación de eventos para botones de eliminar
+                document.getElementById('transactions-table').addEventListener('click', (e) => {
+                    if (e.target.classList.contains('delete-btn')) {
+                        const id = e.target.getAttribute('data-id');
+                        this.handleDeleteTransaction(id);
+                    }
+                });
+            }
+
+            // Principio: Validación de Datos
+            handleNewTransaction(e) {
+                e.preventDefault();
+                
+                const description = document.getElementById('description').value.trim();
+                const amount = parseFloat(document.getElementById('amount').value);
+                const category = document.getElementById('category').value;
+                const type = document.querySelector('input[name="type"]:checked').value;
+                const date = document.getElementById('date').value;
+
+                if (!description || isNaN(amount) || amount <= 0 || !date) {
+                    this.showError('Por favor complete todos los campos correctamente');
+                    return;
+                }
+
+                const transaction = {
+                    id: Date.now().toString(), // ID único
+                    description,
+                    amount,
+                    category,
+                    type,
+                    date
+                };
+
+                this.model.addTransaction(transaction);
+                this.resetForm();
+            }
+
+            handleDeleteTransaction(id) {
+                this.model.deleteTransaction(id);
+            }
+
+            handleClearData() {
+                if (confirm('¿Estás seguro que deseas borrar todos los datos?')) {
+                    this.model.clearAllData();
+                }
+            }
+
+            resetForm() {
+                document.getElementById('transaction-form').reset();
+                document.getElementById('date').valueAsDate = new Date();
+            }
+
+            showError(message) {
+                alert(message); // Simplificado para este ejemplo
+            }
+        }
+
+        // --- VISTA ---
+        // Principio: Separación de la Interfaz de Usuario
+        class FinanceView {
+            constructor(model) {
+                this.model = model;
+                this.model.addObserver(this);
+                this.initView();
+            }
+
+            // Principio: Inicialización
+            initView() {
+                // Establecer la fecha actual en el campo de fecha
+                document.getElementById('date').valueAsDate = new Date();
+                this.update();
+                this.initializeChart();
+            }
+
+            // Principio: Actualización de UI basada en datos
+            update() {
+                this.updateSummary();
+                this.updateTransactionList();
+                this.updateChart();
+            }
+
+            updateSummary() {
+                const formatter = new Intl.NumberFormat('es-ES', {
+                    style: 'currency',
+                    currency: 'EUR'
+                });
+
+                document.getElementById('balance').textContent = formatter.format(this.model.getBalance());
+                document.getElementById('total-income').textContent = formatter.format(this.model.getIncome());
+                document.getElementById('total-expense').textContent = formatter.format(this.model.getExpenses());
+            }
+
+            updateTransactionList() {
+                const tableBody = document.getElementById('transactions-table');
+                const noTransactionsElement = document.getElementById('no-transactions');
+                const transactions = this.model.getTransactions();
+                
+                tableBody.innerHTML = '';
+                
+                if (transactions.length === 0) {
+                    noTransactionsElement.style.display = 'block';
+                    return;
+                }
+                
+                noTransactionsElement.style.display = 'none';
+                
+                const formatter = new Intl.NumberFormat('es-ES', {
+                    style: 'currency',
+                    currency: 'EUR'
+                });
+
+                // Ordenar transacciones por fecha (más recientes primero)
+                transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                transactions.forEach(transaction => {
+                    const row = document.createElement('tr');
+                    row.classList.add('border-b', 'hover:bg-gray-50', 'dark:hover:bg-gray-800');
+                    
+                    // Formatear fecha
+                    const date = new Date(transaction.date);
+                    const formattedDate = date.toLocaleDateString('es-ES');
+                    
+                    // Traducir categorías
+                    const categoryMap = {
+                        'salary': 'Salario',
+                        'investment': 'Inversión',
+                        'food': 'Comida',
+                        'transportation': 'Transporte',
+                        'entertainment': 'Entretenimiento',
+                        'housing': 'Vivienda',
+                        'utilities': 'Servicios',
+                        'other': 'Otro'
+                    };
+                    
+                    const amountClass = transaction.type === 'income' ? 'text-income' : 'text-expense';
+                    const amountSign = transaction.type === 'income' ? '+' : '-';
+                    
+                    row.innerHTML = `
+                        <td class="py-2">${formattedDate}</td>
+                        <td class="py-2">${transaction.description}</td>
+                        <td class="py-2">${categoryMap[transaction.category] || transaction.category}</td>
+                        <td class="py-2 text-right ${amountClass} font-medium">${amountSign}${formatter.format(transaction.amount)}</td>
+                        <td class="py-2 text-right">
+                            <button class="delete-btn text-red-500 hover:text-red-700" data-id="${transaction.id}">
+                                Eliminar
+                            </button>
+                        </td>
+                    `;
+                    
+                    tableBody.appendChild(row);
+                });
+            }
+
+            // Principio: Visualización de Datos
+            initializeChart() {
+                const ctx = document.getElementById('finance-chart').getContext('2d');
+                
+                this.chart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: [],
+                        datasets: [
+                            {
+                                label: 'Ingresos',
+                                backgroundColor: '#34D399',
+                                data: []
+                            },
+                            {
+                                label: 'Gastos',
+                                backgroundColor: '#F87171',
+                                data: []
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                stacked: false
+                            },
+                            y: {
+                                beginAtZero: true
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            }
+                        }
+                    }
+                });
+            }
+
+            updateChart() {
+                const categoryTotals = this.model.getCategoryTotals();
+                
+                // Traducir categorías
+                const categoryMap = {
+                    'salary': 'Salario',
+                    'investment': 'Inversión',
+                    'food': 'Comida',
+                    'transportation': 'Transporte',
+                    'entertainment': 'Entretenimiento',
+                    'housing': 'Vivienda',
+                    'utilities': 'Servicios',
+                    'other': 'Otro'
+                };
+                
+                const categories = Object.keys(categoryTotals);
+                const incomeData = [];
+                const expenseData = [];
+                const labels = [];
+                
+                for (const category of categories) {
+                    labels.push(categoryMap[category] || category);
+                    incomeData.push(categoryTotals[category].income);
+                    expenseData.push(categoryTotals[category].expense);
+                }
+                
+                this.chart.data.labels = labels;
+                this.chart.data.datasets[0].data = incomeData;
+                this.chart.data.datasets[1].data = expenseData;
+                this.chart.update();
+            }
+        }
+
+        // Inicialización de la aplicación
+        // Principio: Inicialización y Bootstrapping
+        document.addEventListener('DOMContentLoaded', () => {
+            const model = new FinanceModel();
+            const controller = new FinanceController(model);
+            const view = new FinanceView(model);
+        });
+    </script>
+</body>
+</html>
